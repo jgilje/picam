@@ -86,8 +86,8 @@ function update() {
     var full = document.getElementById("full");
     var preview = document.getElementById("preview");
     var params = create_params();
-    preview.src = "/preview?" + params;
-    full.href = "/full?" + params;
+    preview.src = "preview?" + params;
+    full.href = "full?" + params;
 }
 
 function set_default(id) {
