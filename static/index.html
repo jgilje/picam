@@ -1,0 +1,162 @@
+<!doctype html>
+
+<html lang="no">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="foundation.css" />
+  <style>
+    [type=range] {
+        display:block;
+        box-sizing:border-box;
+        width:100%;
+        height:2.4375rem;
+        margin:0 0 1rem;
+        padding:.5rem;
+        border:1px solid #cacaca;
+        border-radius:0;
+        background-color:#fefefe;
+        font-family:inherit;
+        font-size:1rem;
+        font-weight:400;
+        color:#0a0a0a;
+        transition:box-shadow .5s,border-color .25s ease-in-out;
+    }
+
+    </style>
+  <title>Hildalsdalen</title>
+</head>
+
+<body>
+    <div class="row">
+        <div class="small-12 columns">
+            &nbsp;
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="small-12 small-centered columns">
+            <a id="full" href="/full" target="_blank">
+                <img id="preview" width="100%">
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="small-12 columns">
+            &nbsp;
+        </div>
+    </div>
+
+    <form>
+        <div class="row">
+            <div class="small-12 medium-4 columns">
+                <label>Exposure
+                    <select name="exposure" onchange="set('exposure', this.value)" data-default="auto">
+                        <option>off</option>
+                        <option>auto</option>
+                        <option>night</option>
+                        <option>nightpreview</option>
+                        <option>backlight</option>
+                        <option>spotlight</option>
+                        <option>sports</option>
+                        <option>snow</option>
+                        <option>beach</option>
+                        <option>verylong</option>
+                        <option>fixedfps</option>
+                        <option>antishake</option>
+                        <option>fireworks</option>
+                    </select>
+                </label>
+            </div>
+            <div class="small-12 medium-4 columns">
+                <label>White Balance
+                    <select name="awb" onchange="set('awb', this.value)" data-default="auto">
+                        <option>off</option>
+                        <option>auto</option>
+                        <option>sun</option>
+                        <option>cloud</option>
+                        <option>shade</option>
+                        <option>tungsten</option>
+                        <option>fluorescent</option>
+                        <option>incandescent</option>
+                        <option>flash</option>
+                        <option>horizon</option>
+                    </select>
+                </label>
+            </div>
+            <div class="small-12 medium-4 columns">
+                <label>Effect
+                    <select name="ifx" onchange="set('ifx', this.value)" data-default="none">
+                        <option>none</option>
+                        <option>negative</option>
+                        <option>solarise</option>
+                        <option>sketch</option>
+                        <option>denoise</option>
+                        <option>emboss</option>
+                        <option>oilpaint</option>
+                        <option>hatch</option>
+                        <option>gpen</option>
+                        <option>pastel</option>
+                        <option>watercolour</option>
+                        <option>film</option>
+                        <option>blur</option>
+                        <option>saturation</option>
+                        <option>colourswap</option>
+                        <option>washedout</option>
+                        <option>posterise</option>
+                        <option>colourpoint</option>
+                        <option>colourbalance</option>
+                        <option>cartoon</option>
+                    </select>
+                </label>
+            </div>
+        </div>
+        <div class="row">
+            <div class="small-12 columns">
+                <label>ISO: <span id="iso-preview"></span>
+                    <input name="iso" class="input-group-field" type="range" min="100" max="800"
+                     step="100" data-default="100" onchange="set('iso', this.value)" oninput="updatePreview('iso', this.value)">
+                </label>
+            </div>
+        </div>
+        <div class="row">
+            <div class="small-6 columns">
+                <label>Shutter Speed: <span id="ss-preview"></span><span id="ss-preview-unit"></span></label>
+            </div>
+            <div class="small-6 columns">
+                <label style="display: inline;">Ratio: </label>
+                <input id="ss-ratio-001" name="ss-ratio" type="radio" value="001" onchange="setShutterSpeed()" onclick="updateShutterSpeed()" checked="true"><label for="ss-ratio-001">×1</label>
+                <input id="ss-ratio-010" name="ss-ratio" type="radio" value="010" onchange="setShutterSpeed()" onclick="updateShutterSpeed()"><label for="ss-ratio-010">×10</label>
+                <input id="ss-ratio-100" name="ss-ratio" type="radio" value="100" onchange="setShutterSpeed()" onclick="updateShutterSpeed()"><label for="ss-ratio-100">×100</label>
+            </div>
+        </div>
+        <div class="row">
+            <div class="small-12 columns">
+                <input name="ss" class="input-group-field" type="range" min="0" max="100000"
+                    step="100" data-default="0" onchange="setShutterSpeed()" oninput="updateShutterSpeed()">
+            </div>
+        </div>
+        <div class="row">
+            <div class="small-12 columns">
+                <div class="row">
+                    <div class="small-6 columns text-right">
+                        <label>Horizontal Flip
+                            <input name="hf" type="checkbox" onchange="set('hf', this.checked)" data-default="false">
+                        </label>
+                    </div>
+                    <div class="small-6 columns">
+                        <label>Vertical Flip
+                            <input name="vf" type="checkbox" onchange="set('vf', this.checked)" data-default="false">
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</body>
+
+<script src="picam.js"></script>
+
+</html>
