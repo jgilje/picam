@@ -1,50 +1,30 @@
-//go:generate esc -o static.go -pkg main -prefix static static
-
 package main
 
 import (
 	"flag"
-	"html/template"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"os/exec"
 	"strconv"
+	"sync"
 )
+
+var mutex sync.Mutex
 
 var port uint
 
-// var homeTempl = template.Must(template.ParseFiles("home.html"))
-var homeTmpl *template.Template
-
-func indexHandler(c http.ResponseWriter, req *http.Request) {
-	homeTmpl.Execute(c, req.Host)
-}
-
-var baseOptions = []string{"-o", "-", "-t", "100"}
+var baseOptions = []string{"-n", "-v", "0", "-o", "-", "-t", "1000"}
 
 func handleOptions(options []string, query url.Values) []string {
-	if query["exposure"] != nil {
-		options = append(options, "-ex", query["exposure"][0])
-	}
-	if query["awb"] != nil {
-		options = append(options, "-awb", query["awb"][0])
-	}
-	if query["ifx"] != nil {
-		options = append(options, "-ifx", query["ifx"][0])
-	}
-	if query["iso"] != nil {
-		options = append(options, "-ISO", query["iso"][0])
-	}
 	if query["ss"] != nil {
-		options = append(options, "-ss", query["ss"][0])
+		options = append(options, "--shutter", query["ss"][0])
 	}
 	if (query["vf"] != nil) && (query["vf"][0] == "true") {
-		options = append(options, "-vf")
+		options = append(options, "--vflip=1")
 	}
 	if (query["hf"] != nil) && (query["hf"][0] == "true") {
-		options = append(options, "-hf")
+		options = append(options, "--hflip=1")
 	}
 
 	return options
@@ -55,16 +35,20 @@ func uncachedHandler(handler func(http.ResponseWriter, *http.Request)) func(http
 		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 		w.Header().Set("Pragma", "no-cache")
 		w.Header().Set("Expires", "0")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 
 		handler(w, r)
 	})
 }
 
 func fullHandler(c http.ResponseWriter, req *http.Request) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	options := baseOptions
 	options = handleOptions(options, req.URL.Query())
 
-	cmd := exec.Command("raspistill", options...)
+	cmd := exec.Command("libcamera-still", options...)
 	stdout, err := cmd.Output()
 	if err != nil {
 		log.Println("Failed to execute preview")
@@ -74,10 +58,13 @@ func fullHandler(c http.ResponseWriter, req *http.Request) {
 }
 
 func previewHandler(c http.ResponseWriter, req *http.Request) {
-	options := append(baseOptions, "-w", "640", "-h", "480")
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	options := append(baseOptions, "--width", "640", "--height", "480")
 	options = handleOptions(options, req.URL.Query())
 
-	cmd := exec.Command("raspistill", options...)
+	cmd := exec.Command("libcamera-still", options...)
 	stdout, err := cmd.Output()
 	if err != nil {
 		log.Println("Failed to execute preview")
@@ -86,35 +73,10 @@ func previewHandler(c http.ResponseWriter, req *http.Request) {
 	c.Write(stdout)
 }
 
-func readFile(fs http.FileSystem, name string) string {
-	file, err := fs.Open(name)
-	if err != nil {
-		log.Fatal("Failed to open file")
-	}
-
-	bytes, err := ioutil.ReadAll(file)
-	if err != nil {
-		log.Fatal("Failed to read file", name)
-	}
-
-	return string(bytes)
-}
-
 func handleHTTP() {
-	fs := FS(false)
-
-	tmpl, err := template.New("home").Parse(readFile(fs, "/index.html"))
-	if err != nil {
-		log.Fatal("Template error in index.html")
-	}
-	homeTmpl = tmpl
-
-	http.Handle("/", http.FileServer(fs))
-	http.HandleFunc("/index.html", indexHandler)
 	http.HandleFunc("/preview", uncachedHandler(previewHandler))
 	http.HandleFunc("/full", uncachedHandler(fullHandler))
 
-	// http.HandleFunc("/", homeHandler)
 	addr := ":" + strconv.FormatUint(uint64(port), 10)
 	if err := http.ListenAndServe(addr, nil); err != nil {
 		log.Fatal("ListenAndServe:", err)
