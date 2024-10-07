@@ -1,20 +1,79 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"os/exec"
 	"strconv"
 	"sync"
 )
 
+type Config struct {
+	Port                 uint   `json:"port"`
+	PreviewWidth         string `json:"preview-width"`
+	PreviewHeight        string `json:"preview-height"`
+	ExposureCompensation string `json:"exposure-compensation"`
+}
+
+type OptionalConfig struct {
+	Port                 *uint   `json:"port"`
+	PreviewWidth         *string `json:"preview-width"`
+	PreviewHeight        *string `json:"preview-height"`
+	ExposureCompensation *string `json:"exposure-compensation"`
+}
+
+var config Config = Config{
+	Port:                 9000,
+	PreviewWidth:         "1024",
+	PreviewHeight:        "768",
+	ExposureCompensation: "0",
+}
+
 var mutex sync.Mutex
 
-var port uint
-
 var baseOptions = []string{"-n", "-v", "0", "-o", "-", "-t", "1000"}
+
+func loadConfig(filename string) {
+	_, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return
+	}
+
+	file, err := os.Open(filename)
+	if err != nil {
+		log.Fatalf("Failed to open config file: %v", err)
+	}
+	defer file.Close()
+
+	bytes, err := ioutil.ReadAll(file)
+	if err != nil {
+		log.Fatalf("Failed to read config file: %v", err)
+	}
+
+	var optionalConfig OptionalConfig
+
+	if err := json.Unmarshal(bytes, &config); err != nil {
+		log.Fatalf("Failed to parse config file: %v", err)
+	}
+
+	if optionalConfig.Port != nil {
+		config.Port = *optionalConfig.Port
+	}
+	if optionalConfig.PreviewWidth != nil {
+		config.PreviewWidth = *optionalConfig.PreviewWidth
+	}
+	if optionalConfig.PreviewHeight != nil {
+		config.PreviewHeight = *optionalConfig.PreviewHeight
+	}
+	if optionalConfig.ExposureCompensation != nil {
+		config.ExposureCompensation = *optionalConfig.ExposureCompensation
+	}
+}
 
 func handleOptions(options []string, query url.Values) []string {
 	if query["ss"] != nil {
@@ -61,7 +120,10 @@ func previewHandler(c http.ResponseWriter, req *http.Request) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	options := append(baseOptions, "--width", "640", "--height", "480")
+	options := append(baseOptions, "--width", config.PreviewWidth, "--height", config.PreviewHeight)
+	if config.ExposureCompensation != "" {
+		options = append(options, "--ev", config.ExposureCompensation)
+	}
 	options = handleOptions(options, req.URL.Query())
 
 	cmd := exec.Command("libcamera-still", options...)
@@ -77,15 +139,17 @@ func handleHTTP() {
 	http.HandleFunc("/preview", uncachedHandler(previewHandler))
 	http.HandleFunc("/full", uncachedHandler(fullHandler))
 
-	addr := ":" + strconv.FormatUint(uint64(port), 10)
+	addr := ":" + strconv.FormatUint(uint64(config.Port), 10)
 	if err := http.ListenAndServe(addr, nil); err != nil {
 		log.Fatal("ListenAndServe:", err)
 	}
 }
 
 func main() {
-	flag.UintVar(&port, "port", 9000, "http service address")
+	configFile := flag.String("config", "config.json", "path to config file")
 	flag.Parse()
+
+	loadConfig(*configFile)
 
 	go handleHTTP()
 
